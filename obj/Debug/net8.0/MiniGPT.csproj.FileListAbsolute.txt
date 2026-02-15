@@ -12,3 +12,4 @@ C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\refint\MiniGPT.dll
 C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.pdb
 C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.genruntimeconfig.cache
 C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\ref\MiniGPT.dll
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.sourcelink.json

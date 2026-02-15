@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MiniGPT WebUI</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #222; color: #eee; }
+        #chat { border: 1px solid #444; padding: 20px; height: 400px; overflow-y: scroll; background: #333; border-radius: 8px; }
+        .user { color: #4af; font-weight: bold; }
+        .ai { color: #f4a; font-weight: bold; }
+        .controls { margin-top: 10px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border-radius: 4px; border: none; }
+        button { padding: 10px 20px; cursor: pointer; background: #4af; border: none; border-radius: 4px; font-weight: bold; }
+        button:hover { background: #39e; }
+    </style>
+</head>
+<body>
+    <h1>🤖 MiniGPT</h1>
+    <div id="chat"></div>
+    <div class="controls">
+        <input id="msg" placeholder="Mesajınızı yazın..." onkeydown="if(event.key==='Enter') sendStream()"/>
+        <button onclick="sendStream()">Gönder</button>
+    </div>
+
+    <script>
+        const chat = document.getElementById("chat");
+        
+        function log(u, text) {
+            chat.innerHTML += `<div><span class="${u}">${u}:</span> ${text}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function send() {
+            let val = document.getElementById("msg").value;
+            log("Sen", val);
+            document.getElementById("msg").value = "";
+
+            let r = await fetch("/chat", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: val })
+            });
+
+            let j = await r.json();
+            log("MiniGPT", j.reply);
+        }
+
+        async function sendStream() {
+            let val = document.getElementById("msg").value;
+            log("Sen", val);
+            document.getElementById("msg").value = "";
+            
+            const aiDiv = document.createElement("div");
+            aiDiv.innerHTML = `<span class="ai">MiniGPT:</span> `;
+            chat.appendChild(aiDiv);
+            
+            const eventSource = new EventSource(`/stream?prompt=${encodeURIComponent(val)}`);
+            
+            eventSource.onmessage = function(e) {
+                if(e.data === "[DONE]") {
+                    eventSource.close();
+                    return;
+                }
+                aiDiv.innerHTML += e.data;
+                chat.scrollTop = chat.scrollHeight;
+            };
+            
+            eventSource.onerror = function() {
+                eventSource.close();
+            };
+        }
+    </script>
+</body>
+</html>

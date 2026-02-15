@@ -34,5 +34,12 @@ namespace MiniGPT.NN
 
             return x;
         }
+
+        public void Quantize()
+        {
+            attn.Quantize();
+            fc1.Quantize();
+            fc2.Quantize();
+        }
     }
 }

@@ -1,0 +1,19 @@
+# Project specific
+proje.md
+dataset.txt
+*.ckpt
+*.bin
+*.gguf
+
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# IDE specific
+.vscode/
+.idea/
+*.sln.DotSettings.user
+
+# OS specific
+.DS_Store
+Thumbs.db

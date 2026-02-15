@@ -7,7 +7,7 @@ namespace MiniGPT.NN
     {
         public Tensor W;
         public Tensor B;
-        QuantizedTensor qW;
+        Q4Tensor qW;
 
         public Linear(int input,int output)
         {
@@ -17,13 +17,14 @@ namespace MiniGPT.NN
 
         public void Quantize()
         {
-            qW=new QuantizedTensor(W);
+            qW=new Q4Tensor(W);
+            W=null; // Free float weights
         }
 
         public Tensor Forward(Tensor x)
         {
             int rows=x.Rows;
-            int cols=W.Cols;
+            int cols=qW!=null ? qW.Cols : W.Cols;
             int inner=x.Cols;
 
             var mm=new Tensor(rows,cols,true);

@@ -1,51 +1,62 @@
 using MiniGPT.Core;
 using System.Collections.Generic;
+using System;
 
 namespace MiniGPT.Engine
 {
     public class KVCache
     {
-        public List<Tensor> Keys = new();
-        public List<Tensor> Values = new();
+        public List<float[]> KeyBlocks = new();
+        public List<float[]> ValBlocks = new();
+        
+        public int BlockSize = 32;
+        public int Dim;
+        public int Count = 0;
+        public int Capacity = 0;
+
+        public int MaxTokens = 2048; // Sliding window limit
+
+        public KVCache(int dim)
+        {
+            Dim = dim;
+        }
 
         public void Add(Tensor k, Tensor v)
         {
-            Keys.Add(k);
-            Values.Add(v);
+            int rows = k.Rows;
+            
+            for(int i=0; i<rows; i++)
+            {
+                if (Count == Capacity)
+                {
+                    KeyBlocks.Add(new float[BlockSize * Dim]);
+                    ValBlocks.Add(new float[BlockSize * Dim]);
+                    Capacity += BlockSize;
+                }
+
+                int blockIdx = Count / BlockSize;
+                int offset = (Count % BlockSize) * Dim;
+
+                Array.Copy(k.Data, i*Dim, KeyBlocks[blockIdx], offset, Dim);
+                Array.Copy(v.Data, i*Dim, ValBlocks[blockIdx], offset, Dim);
+
+                Count++;
+            
+                if (Count > MaxTokens)
+                    SlidingWindow();
+            }
         }
 
-        public Tensor StackKeys()
+        private void SlidingWindow()
         {
-            int rows = Keys.Count;
-            int dim = Keys[0].Cols;
-
-            var t = new Tensor(rows, dim);
-
-            for(int i=0;i<rows;i++)
-                for(int j=0;j<dim;j++)
-                    t[i,j]=Keys[i][0,j];
-
-            return t;
-        }
-
-        public Tensor StackValues()
-        {
-            int rows = Values.Count;
-            int dim = Values[0].Cols;
-
-            var t = new Tensor(rows, dim);
-
-            for(int i=0;i<rows;i++)
-                for(int j=0;j<dim;j++)
-                    t[i,j]=Values[i][0,j];
-
-            return t;
-        }
-
-        public void Clear()
-        {
-            Keys.Clear();
-            Values.Clear();
+             // Remove first block if full
+             if(KeyBlocks.Count > 1 && (Count - MaxTokens) >= BlockSize)
+             {
+                 KeyBlocks.RemoveAt(0);
+                 ValBlocks.RemoveAt(0);
+                 Count -= BlockSize;
+                 Capacity -= BlockSize;
+             }
         }
     }
 }

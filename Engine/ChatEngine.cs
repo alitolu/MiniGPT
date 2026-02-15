@@ -4,6 +4,7 @@ using MiniGPT.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MiniGPT.Engine
 {
@@ -22,10 +23,10 @@ namespace MiniGPT.Engine
 
         public string Reply(string input)
         {
-            var ids=tok.Encode(input);
+            var ids=tok.Encode(input); // List<int>
 
-            var x=new Tensor(1,ids.Length);
-            for(int i=0;i<ids.Length;i++)
+            var x=new Tensor(1,ids.Count);
+            for(int i=0;i<ids.Count;i++)
                 x[0,i]=ids[i];
 
             var o=model.Forward(x);
@@ -39,29 +40,50 @@ namespace MiniGPT.Engine
             return tok.Decode(new[]{best});
         }
 
-        public string Generate(string prompt,int maxTokens=30)
+        public string Generate(string prompt,int maxTokens=50)
         {
-            var tokens=tok.Encode(prompt).ToList();
+            var tokens=tok.Encode(prompt); // List<int>
 
             var caches=new KVCache[model.BlockCount];
-
+            // Dim per head = ModelDim / Heads
+            int headDim = model.Dim / model.Heads; // Assuming stored Heads count in model or hardcoded 4
+            
             for(int i=0;i<caches.Length;i++)
-                caches[i]=new KVCache();
+                caches[i]=new KVCache(headDim);
 
-            for(int step=0;step<maxTokens;step++)
+            // Prefill: Feed prompt into model to populate cache
+            if(tokens.Count > 0)
+            {
+               var promptTensor = OneHot(tokens);
+               var logits = model.Forward(promptTensor, caches);
+               
+               // Predict next token from last logits
+               float[] nextLogits = new float[vocab];
+               int lastRow = logits.Rows - 1;
+               for(int j=0; j<vocab; j++) nextLogits[j] = logits[lastRow, j];
+               
+               int next = Sample(nextLogits, 0.8f);
+               if(next == tok.EOS) return tok.Decode(tokens);
+               
+               tokens.Add(next);
+            }
+
+            // Generation Loop
+            for(int step=0; step < maxTokens-1; step++)
             {
                 var lastToken=new List<int>{tokens[^1]};
-
                 var x=OneHot(lastToken);
 
                 var logits=model.Forward(x,caches);
 
                 float[] last=new float[vocab];
-
                 for(int i=0;i<vocab;i++)
                     last[i]=logits[0,i];
 
                 int next=Sample(last,0.8f);
+
+                if(next==tok.EOS)
+                    break;
 
                 tokens.Add(next);
             }
@@ -80,20 +102,21 @@ namespace MiniGPT.Engine
 
         int Sample(float[] logits,float temperature)
         {
-            var rnd=new Random();
-
             for(int i=0;i<logits.Length;i++)
                 logits[i]/=temperature;
 
             float max=logits.Max();
-            for(int i=0;i<logits.Length;i++)
+
+            Parallel.For(0,logits.Length,i=>
+            {
                 logits[i]=(float)Math.Exp(logits[i]-max);
+            });
 
             float sum=logits.Sum();
             for(int i=0;i<logits.Length;i++)
                 logits[i]/=sum;
 
-            float r=(float)rnd.NextDouble();
+            float r=(float)Random.Shared.NextDouble();
             float cum=0;
 
             for(int i=0;i<logits.Length;i++)

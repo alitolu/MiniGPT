@@ -7,6 +7,7 @@ namespace MiniGPT.NN
     {
         Linear Wq,Wk,Wv,Wo;
         int dim;
+        bool useFlash=true;
 
         public MultiHeadAttention(int d)
         {
@@ -25,12 +26,26 @@ namespace MiniGPT.NN
 
             if(cache!=null)
             {
-                cache.Add(K,V);
+                // Inference Mode (Generation)
+                cache.Add(K,V); // Add current token(s) to paged cache
 
-                K=cache.StackKeys();
-                V=cache.StackValues();
+                // Use Paged FlashAttention
+                return Wo.Forward(FlashAttention.Compute(Q,cache));
             }
+            else
+            {
+                // Training Mode (No Cache)
+                // Use Standard FlashAttention (or Classic)
+                var context = useFlash 
+                    ? FlashAttention.Compute(Q,K,V)
+                    : ClassicAttention(Q,K,V);
+                
+                return Wo.Forward(context);
+            }
+        }
 
+        Tensor ClassicAttention(Tensor Q,Tensor K,Tensor V)
+        {
             var scores=new Tensor(Q.Rows,K.Rows,true);
 
             for(int i=0;i<Q.Rows;i++)
@@ -63,7 +78,15 @@ namespace MiniGPT.NN
             for(int k=0;k<dim;k++)
                 outv[i,k]+=scores[i,j]*V[j,k];
 
-            return Wo.Forward(outv);
+            return outv;
+        }
+
+        public void Quantize()
+        {
+            Wq.Quantize();
+            Wk.Quantize();
+            Wv.Quantize();
+            Wo.Quantize();
         }
     }
 }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MiniGPT")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d182b9b4dc6669e1fab3d7b34d152d57273373e0")]
 [assembly: System.Reflection.AssemblyProductAttribute("MiniGPT")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MiniGPT")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

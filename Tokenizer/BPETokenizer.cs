@@ -8,6 +8,8 @@ namespace MiniGPT.Tokenizer
         Dictionary<string,int> vocab=new();
         Dictionary<int,string> rev=new();
 
+        public int EOS { get; private set; }
+
         public void Build(string text)
         {
             var words=text.Split(' ').Distinct();
@@ -19,16 +21,20 @@ namespace MiniGPT.Tokenizer
                 rev[id]=w;
                 id++;
             }
+
+            vocab["<EOS>"]=id;
+            rev[id]="<EOS>";
+            EOS=id;
         }
 
         public int VocabSize => vocab.Count;
 
-        public int[] Encode(string s)
+        public List<int> Encode(string s)
             => s.Split(' ')
                 .Select(w=>vocab.ContainsKey(w)?vocab[w]:0)
-                .ToArray();
+                .ToList();
 
         public string Decode(IEnumerable<int> ids)
-            => string.Join(" ",ids.Select(i=>rev[i]));
+            => string.Join(" ",ids.Where(i=>i!=EOS).Select(i=>rev.ContainsKey(i)?rev[i]:"?"));
     }
 }
