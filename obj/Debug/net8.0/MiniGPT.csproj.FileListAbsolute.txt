@@ -1,0 +1,14 @@
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.AssemblyInfoInputs.cache
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.AssemblyInfo.cs
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.csproj.CoreCompileInputs.cache
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\bin\Debug\net8.0\MiniGPT.exe
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\bin\Debug\net8.0\MiniGPT.deps.json
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\bin\Debug\net8.0\MiniGPT.runtimeconfig.json
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\bin\Debug\net8.0\MiniGPT.dll
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\bin\Debug\net8.0\MiniGPT.pdb
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.dll
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\refint\MiniGPT.dll
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.pdb
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\MiniGPT.genruntimeconfig.cache
+C:\Users\alito\OneDrive\Masaüstü\miniGpt\obj\Debug\net8.0\ref\MiniGPT.dll
