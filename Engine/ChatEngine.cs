@@ -24,18 +24,14 @@ namespace MiniGPT.Engine
         public string Reply(string input)
         {
             var ids=tok.Encode(input); // List<int>
-
-            var x=new Tensor(1,ids.Count);
-            for(int i=0;i<ids.Count;i++)
-                x[0,i]=ids[i];
-
-            var o=model.Forward(x);
+            var o=model.Forward(ids.ToArray());
 
             int best=0;
-            float max=o.Data[0];
+            // o is float[] here because Forward(int[]) calls the wrapper
+            float max=o[0];
 
-            for(int i=1;i<o.Data.Length;i++)
-                if(o.Data[i]>max){max=o.Data[i];best=i;}
+            for(int i=1;i<o.Length;i++)
+                if(o[i]>max){max=o[i];best=i;}
 
             return tok.Decode(new[]{best});
         }
@@ -46,7 +42,7 @@ namespace MiniGPT.Engine
 
             var caches=new KVCache[model.BlockCount];
             // Dim per head = ModelDim / Heads
-            int headDim = model.Dim / model.Heads; // Assuming stored Heads count in model or hardcoded 4
+            int headDim = model.Dim / model.Heads; 
             
             for(int i=0;i<caches.Length;i++)
                 caches[i]=new KVCache(headDim);
@@ -54,12 +50,11 @@ namespace MiniGPT.Engine
             // Prefill: Feed prompt into model to populate cache
             if(tokens.Count > 0)
             {
-               var promptTensor = OneHot(tokens);
-               var logits = model.Forward(promptTensor, caches);
+               var logits = model.Forward(tokens.ToArray(), caches);
                
                // Predict next token from last logits
+               var lastRow = logits.Rows - 1;
                float[] nextLogits = new float[vocab];
-               int lastRow = logits.Rows - 1;
                for(int j=0; j<vocab; j++) nextLogits[j] = logits[lastRow, j];
                
                int next = Sample(nextLogits, 0.8f);
@@ -71,10 +66,9 @@ namespace MiniGPT.Engine
             // Generation Loop
             for(int step=0; step < maxTokens-1; step++)
             {
-                var lastToken=new List<int>{tokens[^1]};
-                var x=OneHot(lastToken);
+                var lastToken=new int[]{tokens[^1]};
 
-                var logits=model.Forward(x,caches);
+                var logits=model.Forward(lastToken, caches);
 
                 float[] last=new float[vocab];
                 for(int i=0;i<vocab;i++)
@@ -89,15 +83,6 @@ namespace MiniGPT.Engine
             }
 
             return tok.Decode(tokens);
-        }
-
-        Tensor OneHot(List<int> ids)
-        {
-            var t=new Tensor(ids.Count,vocab);
-            for(int i=0;i<ids.Count;i++)
-                if(ids[i]<vocab)
-                    t[i,ids[i]]=1.0f;
-            return t;
         }
 
         int Sample(float[] logits,float temperature)

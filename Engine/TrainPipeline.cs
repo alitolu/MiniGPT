@@ -3,6 +3,8 @@ using MiniGPT.Data;
 using MiniGPT.Tokenizer;
 using MiniGPT.Model;
 using System;
+using System.IO;
+using System.Linq;
 
 namespace MiniGPT.Engine
 {
@@ -10,6 +12,16 @@ namespace MiniGPT.Engine
     {
         public static void Run(string datasetPath)
         {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.WriteLine("==================================================");
+            Console.WriteLine("MiniGPT Training System v1.2");
+            Console.WriteLine($"OS: {Environment.OSVersion}");
+            Console.WriteLine($"CPU Cores: {Environment.ProcessorCount}");
+            Console.WriteLine($"Memory Usage: {System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024} MB");
+            Console.WriteLine("GPU Status: N/A (Running on CPU Only Mode)");
+            Console.WriteLine("==================================================");
+            Console.WriteLine("Dataset yükleniyor...");
+
             var tokenizer = new BPETokenizer();
 
             var dataset = new StreamingDataset(datasetPath);
@@ -22,31 +34,45 @@ namespace MiniGPT.Engine
 
             model.Mode = ModelMode.Train;
 
-            var loader = new DataLoader(dataset, tokenizer, 8);
-
+            var batchSize = 8;
+            var loader = new DataLoader(dataset, tokenizer, batchSize);
             var trainer = new Trainer(model, tokenizer.VocabSize);
+            
+            // Satır sayısını hesapla
+            var totalLines = File.ReadLines(datasetPath).Count();
+            var totalBatches = (int)Math.Ceiling((double)totalLines / batchSize);
 
-            int epoch = 0;
-
-            foreach (var batch in loader.GetBatches())
+            for (int epoch = 1; epoch <= 50; epoch++)
             {
-                trainer.TrainBatch(batch);
+                Console.WriteLine($"\nEpoch {epoch}/50 Başlıyor... (Toplam {totalBatches} Batch)");
+                var currentBatch = 0;
+                
+                foreach (var batch in loader.GetBatches())
+                {
+                    trainer.TrainBatch(batch);
+                    currentBatch++;
 
-                if (epoch % 10 == 0)
-                    CheckpointManager.Save(
-                        model,
-                        $"model_epoch_{epoch}.ckpt");
+                    // Progress Bar
+                    var percent = (double)currentBatch / totalBatches;
+                    var filled = (int)(percent * 20);
+                    var bar = new string('█', filled).PadRight(20, '░');
+                    
+                    Console.Write($"\r[{bar}] %{percent*100:F1} | Batch: {currentBatch}/{totalBatches} | Loss: {trainer.LastLoss:F4}");
+                }
 
-                epoch++;
+                // Her epoch sonunda checkpoint al
+                Console.WriteLine(); 
+                CheckpointManager.Save(model, $"checkpoints/model_epoch_{epoch}.ckpt");
+                CheckpointManager.Save(model, "checkpoints/model_latest.ckpt");
+                Console.WriteLine($"\nCheckpoint: model_epoch_{epoch}.ckpt kaydedildi.");
             }
-
             model.Mode = ModelMode.Inference;
             model.DisableGradients();
-            model.Quantize();
+            // model.Quantize();
 
             CheckpointManager.Save(model, "model_final.ckpt");
 
-            Console.WriteLine($"Training tamamlandı. {epoch} batch işlendi.");
+            Console.WriteLine($"Training tamamlandı. {totalBatches} batch işlendi.");
         }
     }
 }

@@ -25,8 +25,9 @@ namespace MiniGPT.Data
 
             foreach (var line in dataset.StreamLines())
             {
-                var tokens = tokenizer.Encode(line);
-                batch.Add(tokens.ToArray());
+                // Context Length Limit: 128
+                var tokens = tokenizer.Encode(line).Take(128).ToArray();
+                batch.Add(tokens);
 
                 if (batch.Count == batchSize)
                 {

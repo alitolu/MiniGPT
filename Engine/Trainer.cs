@@ -33,44 +33,87 @@ namespace MiniGPT.Engine
             return -logProb;
         }
 
-        public void TrainStep()
-        {
-            var x=Tensor.Rand(1,vocabSize);
-            var y=new Tensor(1,vocabSize);
+        // Removed legacy TrainStep method that caused compile errors
 
-            var pred=model.Forward(x);
-
-            for(int i=0;i<vocabSize;i++)
-                pred.Grad[i]=pred.Data[i]-y.Data[i];
-
-            optim.Step();
-            optim.ZeroGrad();
-        }
+        public float LastLoss { get; private set; }
 
         public void TrainBatch(List<int[]> batch)
         {
+          try {
             float totalLoss = 0;
+            int totalTokens = 0;
 
+            int batchIdx = 0;
             foreach (var tokens in batch)
             {
-                for (int i = 0; i < tokens.Length - 1; i++)
+                batchIdx++;
+                // Console.WriteLine($"Processing Sequence {batchIdx}/{batch.Count} Len:{tokens.Length}");
+                
+                if(tokens.Length < 2) continue;
+                
+                int seqLen = tokens.Length - 1;
+                int[] inputTokens = new int[seqLen];
+                Array.Copy(tokens, 0, inputTokens, 0, seqLen);
+
+                // Console.WriteLine("Forward...");
+                var logits = model.Forward(inputTokens, null); 
+                // Console.WriteLine("Forward Done.");
+                
+                var grad = new Tensor(logits.Rows, logits.Cols, true); 
+                float seqLoss = 0;
+
+                for(int t=0; t<seqLen; t++)
                 {
-                    var input = tokens.Take(i + 1).ToArray();
-                    int target = tokens[i + 1];
+                    int target = tokens[t+1];
+                    if(target >= vocabSize) continue;
 
-                    var logits = model.Forward(input);
+                    float max = float.MinValue;
+                    int offset = t * vocabSize;
+                    
+                    for(int j=0; j<vocabSize; j++) 
+                    {
+                        float val = logits.Data[offset + j];
+                        if(val > max) max = val;
+                    }
 
-                    float loss = CrossEntropy(logits, target);
-                    totalLoss += loss;
+                    float sum = 0;
+                    for(int j=0; j<vocabSize; j++) 
+                    {
+                        float exp = MathF.Exp(logits.Data[offset + j] - max);
+                        grad.Data[offset + j] = exp; 
+                        sum += exp;
+                    }
+                    
+                    float invSum = 1.0f / sum;
+                    for(int j=0; j<vocabSize; j++) 
+                    {
+                        float prob = grad.Data[offset + j] * invSum;
+                        grad.Data[offset + j] = prob; 
+                    }
 
-                    model.Backward(target);
+                    float p_target = grad.Data[offset + target];
+                    seqLoss -= MathF.Log(p_target + 1e-9f);
+                    grad.Data[offset + target] -= 1.0f;
                 }
+
+                // Loss Calc...
+                
+                totalLoss += seqLoss;
+                totalTokens += seqLen;
+
+                model.Backward(grad);
             }
 
             optim.Step();
             optim.ZeroGrad();
 
-            Console.WriteLine($"Loss: {totalLoss / batch.Count:F4}");
+            if (totalTokens > 0)
+                LastLoss = totalLoss / totalTokens;
+          } catch(Exception ex) {
+              Console.WriteLine($"\nCRITICAL TRAINING ERROR: {ex.Message}");
+              Console.WriteLine(ex.StackTrace);
+              throw; 
+          }
         }
     }
 }

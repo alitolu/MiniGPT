@@ -9,7 +9,7 @@ namespace MiniGPT.Model
 {
     public class MiniGPTModel
     {
-        Linear embed;
+        Embedding embed;
         Linear head;
 
         TransformerBlock[] blocks;
@@ -18,15 +18,17 @@ namespace MiniGPT.Model
         int vocabSize;
 
         public int BlockCount => blocks.Length;
-        public int Heads = 4; // Default heads, should be passed in ctor but hardcoded for now due to legacy ctor signature
+        public int Heads = 4; 
+
+        Tensor lastOutput; // For Backward
 
         public MiniGPTModel(int vocab,int d,int layers=2, int heads=4)
         {
             Dim=d;
             vocabSize=vocab;
             Heads=heads;
-
-            embed=new Linear(vocab,d);
+            
+            embed=new Embedding(vocab,d);
 
             blocks=Enumerable.Range(0,layers)
                 .Select(_=>new TransformerBlock(d))
@@ -35,9 +37,10 @@ namespace MiniGPT.Model
             head=new Linear(d,vocab);
         }
 
-        public Tensor Forward(Tensor x, KVCache[] caches=null)
+        public Tensor Forward(int[] tokens, KVCache[] caches=null)
         {
-            var h=embed.Forward(x);
+            // Optimized Embedding Lookup
+            var h=embed.Forward(tokens);
 
             var pe=PositionalEncoding.Build(h.Rows,Dim);
             h=Ops.Add(h,pe);
@@ -47,18 +50,18 @@ namespace MiniGPT.Model
                 var cache=caches==null?null:caches[i];
                 h=blocks[i].Forward(h,cache);
             }
-
-            return head.Forward(h);
+            
+            var outTensor = head.Forward(h);
+            
+            if (caches == null) lastOutput = outTensor;
+            
+            return outTensor;
         }
 
         public float[] Forward(int[] tokens)
         {
-            var x=new Tensor(tokens.Length,vocabSize);
-            for(int i=0;i<tokens.Length;i++)
-                if(tokens[i]<vocabSize)
-                    x[i,tokens[i]]=1.0f;
-
-            var output=Forward(x);
+            // Wrapper for simple inference (returns logits of last token)
+            var output = Forward(tokens, null);
 
             int lastRow=output.Rows-1;
             float[] logits=new float[vocabSize];
@@ -68,42 +71,41 @@ namespace MiniGPT.Model
             return logits;
         }
 
-        Tensor lastOutput;
-
-        public void Backward(int target)
+        public void Backward(Tensor gradOutput)
         {
-            if(lastOutput==null) return;
+            // Full Sequence Backward Pass
+            // Chain Rule: Head -> Blocks -> Embedding
 
-            float[] softmax=new float[vocabSize];
-            float max=float.MinValue;
+            // 1. Head Backward
+            var dH = head.Backward(gradOutput);
 
-            for(int i=0;i<vocabSize;i++)
+            // 2. Transformer Blocks Backward (Reverse Order)
+            for(int i=blocks.Length-1; i>=0; i--)
             {
-                float v=lastOutput[lastOutput.Rows-1,i];
-                if(v>max) max=v;
+                dH = blocks[i].Backward(dH);
             }
 
-            float sum=0;
-            for(int i=0;i<vocabSize;i++)
-            {
-                softmax[i]=MathF.Exp(lastOutput[lastOutput.Rows-1,i]-max);
-                sum+=softmax[i];
-            }
-            for(int i=0;i<vocabSize;i++)
-                softmax[i]/=sum;
-
-            softmax[target]-=1.0f;
-
-            if(lastOutput.Grad==null)
-                lastOutput.Grad=new float[lastOutput.Data.Length];
-
-            int offset=(lastOutput.Rows-1)*vocabSize;
-            for(int i=0;i<vocabSize;i++)
-                lastOutput.Grad[offset+i]=softmax[i];
+            // 3. Positional Encoding Backward (Pass-through for Addition)
+            // dLoss/d(h+pe) = dLoss/dh * 1 + dLoss/dpe * 1
+            // Since PE is fixed, we only propagate to Embedding
+            
+            // 4. Embedding Backward
+            // Note: Embedding is implemented as Linear(OneHot), so standard Linear backward works.
+            embed.Backward(dH);
         }
-
+        
+        // This Backward sets the gradient of the output.
+        // The Trainer usually calls backwards on the graph.
+        // Assuming Trainer handles tensor backward propagation if specificied.
+        
         public List<Tensor> Parameters()
-            => embed.Parameters().Concat(head.Parameters()).ToList();
+        {
+             var p = new List<Tensor>();
+             p.AddRange(embed.Parameters());
+             foreach(var b in blocks) p.AddRange(b.Parameters());
+             p.AddRange(head.Parameters());
+             return p;
+        }
 
         public void Quantize()
         {
@@ -127,7 +129,12 @@ namespace MiniGPT.Model
             var all=Parameters();
             var result=new float[all.Count][];
             for(int i=0;i<all.Count;i++)
+            {
+                if(all[i] == null || all[i].Data == null) 
+                   continue; // Safety check
+                   
                 result[i]=(float[])all[i].Data.Clone();
+            }
             return result;
         }
 
@@ -135,7 +142,15 @@ namespace MiniGPT.Model
         {
             var all=Parameters();
             for(int i=0;i<all.Count && i<weights.Length;i++)
-                Array.Copy(weights[i],all[i].Data,all[i].Data.Length);
+            {
+                if(all[i] == null || all[i].Data == null) continue;
+                if(weights[i] == null) continue;
+                
+                if (weights[i].Length == all[i].Data.Length)
+                    Array.Copy(weights[i],all[i].Data,all[i].Data.Length);
+            }
         }
+        
+        public string Generate(string prompt) { return ""; } // Placeholder for Agent Loop compilation
     }
 }

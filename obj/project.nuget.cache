@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "wAf30+LPK+A=",
+  "dgSpecHash": "/DTm69VB1a0=",
   "success": true,
   "projectFilePath": "C:\\Users\\alito\\OneDrive\\Masaüstü\\miniGpt\\MiniGPT.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\alito\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.22\\microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
     "C:\\Users\\alito\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.22\\microsoft.windowsdesktop.app.ref.8.0.22.nupkg.sha512",
+    "C:\\Users\\alito\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.22\\microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
     "C:\\Users\\alito\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.22\\microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
     "C:\\Users\\alito\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.22\\microsoft.netcore.app.host.win-x64.8.0.22.nupkg.sha512"
   ],

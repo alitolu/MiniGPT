@@ -9,6 +9,9 @@ namespace MiniGPT.Engine
     {
         public static void Save(MiniGPTModel model, string path)
         {
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
             var data = model.ExportWeights();
             var json = JsonSerializer.Serialize(data);
             File.WriteAllText(path, json);

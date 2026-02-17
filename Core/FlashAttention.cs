@@ -71,6 +71,9 @@ namespace MiniGPT.Core
             for(int i=0;i<n;i++) {
                 float maxScore=float.MinValue;
                 for(int j=0;j<K.Rows;j++) {
+                    // Causal Mask: Geleceği görme
+                    if(j > i) continue;
+
                     float score=0;
                     for(int k=0;k<d;k++) score+=Q[i,k]*K[j,k];
                     score/=(float)Math.Sqrt(d);
@@ -78,12 +81,16 @@ namespace MiniGPT.Core
                 }
                 float denom=0;
                 for(int j=0;j<K.Rows;j++) {
+                    if(j > i) continue; // Mask
+
                     float score=0;
                     for(int k=0;k<d;k++) score+=Q[i,k]*K[j,k];
                     score/=(float)Math.Sqrt(d);
                     denom+=(float)Math.Exp(score-maxScore);
                 }
                 for(int j=0;j<K.Rows;j++) {
+                    if(j > i) continue; // Mask
+
                     float score=0;
                     for(int k=0;k<d;k++) score+=Q[i,k]*K[j,k];
                     score/=(float)Math.Sqrt(d);

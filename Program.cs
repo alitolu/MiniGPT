@@ -49,7 +49,7 @@ class Program
             var model = new MiniGPTModel(tokenizer.VocabSize, 128, layers: 4);
             MiniGPT.Engine.CheckpointManager.Load(model, "model_final.ckpt");
             
-            model.Quantize();
+            // model.Quantize(); // Disabled due to missing Q4 Forward implementation
             model.Mode = MiniGPT.Core.ModelMode.Inference;
             
             var chat = new ChatEngine(tokenizer, model, tokenizer.VocabSize);
